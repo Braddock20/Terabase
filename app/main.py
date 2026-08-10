@@ -1,4 +1,5 @@
 import asyncio, hashlib, time
+from pathlib import Path
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, UploadFile, File, HTTPException, Request
 from fastapi.responses import HTMLResponse, StreamingResponse
@@ -18,7 +19,13 @@ async def background():
 
 @asynccontextmanager
 async def lifespan(app):
-    require_credentials()
+    try:
+        require_credentials()
+    except RuntimeError:
+        # Keep the service alive while Render is waiting for credentials.
+        yield
+        await tb.close()
+        return
     try: await restore_catalog()
     except Exception: pass
     task=asyncio.create_task(background()); yield; task.cancel(); await tb.close()
@@ -114,4 +121,12 @@ async def remote_list(request:Request,page:int=1):
     try:return {'items':await tb.list(page=page)}
     except Exception as e:raise HTTPException(502,str(e))
 @app.get('/',response_class=HTMLResponse)
-async def index(): return open('static/index.html',encoding='utf-8').read()
+async def index():
+    static_file = Path(__file__).resolve().parent.parent / 'static' / 'index.html'
+    return static_file.read_text(encoding='utf-8')
+
+
+if __name__ == "__main__":
+    import os
+    import uvicorn
+    uvicorn.run("app.main:app", host="0.0.0.0", port=int(os.getenv("PORT", "10000")))
