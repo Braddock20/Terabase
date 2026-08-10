@@ -11,6 +11,11 @@ from .engine import tb, upload_file, download_file, delete_file, restore_catalog
 
 def admin_key(): return hashlib.sha256((settings.terabox_client_secret+"::"+settings.terabox_private_secret).encode()).hexdigest()[:20]
 
+# Render Free has no shell access. The owner can retrieve this from the service logs.
+def print_admin_key():
+    if settings.terabox_client_secret and settings.terabox_private_secret:
+        print("FSE ADMIN KEY: " + admin_key(), flush=True)
+
 async def background():
     while True:
         try: await asyncio.sleep(settings.backup_interval_seconds); await backup_catalog()
@@ -31,6 +36,7 @@ async def lifespan(app):
     task=asyncio.create_task(background()); yield; task.cancel(); await tb.close()
 
 app=FastAPI(title=settings.app_name,version='1.1.0',lifespan=lifespan)
+print_admin_key()
 app.add_middleware(SessionMiddleware,secret_key=admin_key(),max_age=86400*30,same_site='lax',https_only=False)
 app.add_middleware(CORSMiddleware,allow_origins=['*'],allow_methods=['*'],allow_headers=['*'])
 
@@ -51,8 +57,6 @@ async def login(request:Request):
     request.session['auth']=True; return {'ok':True}
 @app.post('/api/logout')
 async def logout(request:Request): request.session.clear(); return {'ok':True}
-@app.get('/api/setup/key')
-async def setup_key(): return {'admin_key':admin_key(),'note':'Derived from your TeraBox application secret. Keep it private.'}
 
 @app.get('/api/terabox/status')
 async def tb_status(request:Request):
