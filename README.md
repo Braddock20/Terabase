@@ -67,3 +67,8 @@ For a serious production deployment, attach a Render persistent disk mounted at 
 - bounded chunk memory instead of buffering an entire upload
 
 The engine intentionally uses only legitimate TeraBox application/OAuth interfaces. It does not bypass authentication, quotas, rate limits, anti-abuse systems, or undocumented private endpoints.
+
+
+## Render Free — no Shell and no generated admin key
+
+You do not need Render Shell or a generated admin key. On the login screen, use your `TERABOX_PRIVATE_SECRET` as the storage admin password. The server also accepts the derived key internally for compatibility. Do not expose your TeraBox credentials in screenshots or logs.
