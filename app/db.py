@@ -14,11 +14,14 @@ class DB:
             CREATE TABLE IF NOT EXISTS settings(k TEXT PRIMARY KEY,v TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS accounts(id TEXT PRIMARY KEY,name TEXT NOT NULL,provider TEXT NOT NULL DEFAULT 'terabox',access_token TEXT NOT NULL,refresh_token TEXT NOT NULL,api_domain TEXT,upload_domain TEXT,expires_at REAL NOT NULL DEFAULT 0,folder TEXT NOT NULL,enabled INTEGER NOT NULL DEFAULT 1,created REAL NOT NULL,updated REAL NOT NULL);
             CREATE INDEX IF NOT EXISTS idx_chunks_file ON chunks(file_id,ordinal);
-            CREATE INDEX IF NOT EXISTS idx_chunks_account ON chunks(account_id);
             ''')
-            # Lightweight migration for databases created by the earlier build.
-            cols=[r[1] for r in self.conn.execute('PRAGMA table_info(chunks)').fetchall()]
-            if 'account_id' not in cols: self.conn.execute('ALTER TABLE chunks ADD COLUMN account_id TEXT')
+            # Migrate databases from the previous single-account build BEFORE
+            # creating indexes that depend on the new multi-account column.
+            cols={r[1] for r in self.conn.execute('PRAGMA table_info(chunks)').fetchall()}
+            if 'account_id' not in cols:
+                self.conn.execute('ALTER TABLE chunks ADD COLUMN account_id TEXT')
+            # Safe/idempotent: this is now guaranteed to exist.
+            self.conn.execute('CREATE INDEX IF NOT EXISTS idx_chunks_account ON chunks(account_id)')
             self.conn.commit()
     def execute(self,sql,args=(),commit=False):
         with self.lock:
