@@ -13,7 +13,7 @@ class Settings:
     max_upload_bytes = 40 * 1024 * 1024 * 1024
     request_timeout = 180.0
     backup_interval_seconds = 600
-    database_path = os.getenv("FSE_DB", "data/fse.db")
+    database_path = os.getenv("FSE_DB", "/data/fse.db" if os.path.isdir("/data") else "data/fse.db")
 
 settings = Settings()
 Path(settings.database_path).parent.mkdir(parents=True, exist_ok=True)
