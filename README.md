@@ -1,74 +1,44 @@
-# TeraBox Storage Engine — simple Render deployment
+# FSE — TeraBox-first Multi-Account Storage Engine
 
-This is the simplified TeraBox-first build. There is **no PostgreSQL**, no `psycopg`, no separate FSE master-key variable, no application-password variable, and no database URL variable.
+A Render-friendly storage manager built around the FSE architecture: logical files are encrypted, chunked, integrity-checked, and mapped to one or more independent TeraBox accounts. The core treats each TeraBox account as a provider instance, so accounts can be enabled, disabled, inspected, and removed without changing storage logic.
 
-## 1. Render environment variables
-
-Only these TeraBox values are required:
-
-```text
-TERABOX_CLIENT_ID=...
-TERABOX_CLIENT_SECRET=...
-TERABOX_PRIVATE_SECRET=...
-```
-
-If you already have OAuth tokens, you may additionally set:
-
-```text
-TERABOX_ACCESS_TOKEN=...
-TERABOX_REFRESH_TOKEN=...
-```
-
-Otherwise open the dashboard and use **TeraBox → Authorize with QR**.
-
-## 2. Render
+## Deploy on Render Free
 
 Build command:
 
-```text
+```bash
 pip install -r requirements.txt
 ```
 
 Start command:
 
-```text
+```bash
 uvicorn app.main:app --host 0.0.0.0 --port $PORT
 ```
 
-The included `render.yaml` already contains this configuration.
+Environment variables for official TeraBox Open Platform authorization:
 
-## 3. First login
-
-After deployment, open Render Shell and run:
-
-```bash
-python -m app.admin
+```text
+TERABOX_CLIENT_ID=
+TERABOX_CLIENT_SECRET=
+TERABOX_PRIVATE_SECRET=
 ```
 
-Copy the printed admin key into the dashboard. This key is deterministically derived from the TeraBox application secret; no extra environment variable is required.
+Optional direct token bootstrap:
 
-## 4. Persistent storage
+```text
+TERABOX_ACCESS_TOKEN=
+TERABOX_REFRESH_TOKEN=
+```
 
-For a serious production deployment, attach a Render persistent disk mounted at `/data`. This keeps the SQLite catalog and rotated OAuth refresh token across redeploys. Without a persistent disk, the service can lose its local token/catalog state when Render replaces the instance.
+No Render Shell is required.
 
-## 5. What it does
+## Multi-account model
 
-- TeraBox-first storage
-- AES-256-GCM encryption before provider upload
-- 8 MiB chunks
-- SHA-256 integrity verification
-- TeraBox precreate/upload/create flow
-- byte-for-byte reconstruction
-- file list/download/delete/verify
-- encrypted catalog backup in TeraBox
-- automatic token refresh
-- quota/status dashboard
-- no PostgreSQL dependency
-- bounded chunk memory instead of buffering an entire upload
+The dashboard has **TeraBox Accounts**. Each account has its own provider instance and isolated FSE namespace folder. Uploads can be automatically placed or pinned to an account. Download/delete operations use the account recorded in each chunk's manifest.
 
-The engine intentionally uses only legitimate TeraBox application/OAuth interfaces. It does not bypass authentication, quotas, rate limits, anti-abuse systems, or undocumented private endpoints.
+The engine does not bypass TeraBox authentication, quotas, anti-abuse controls, or undocumented private APIs. It expects legitimate authorization tokens or TeraBox's documented OAuth/device flow.
 
+## Persistence
 
-## Render Free — no Shell and no generated admin key
-
-You do not need Render Shell or a generated admin key. On the login screen, use your `TERABOX_PRIVATE_SECRET` as the storage admin password. The server also accepts the derived key internally for compatibility. Do not expose your TeraBox credentials in screenshots or logs.
+Set `FSE_DB=/data/fse.db` and attach a Render persistent disk if you need the local catalog to survive restarts. The encrypted catalog is also backed up to every enabled TeraBox account.
