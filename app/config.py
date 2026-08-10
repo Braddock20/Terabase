@@ -1,23 +1,25 @@
-from pydantic_settings import BaseSettings, SettingsConfigDict
+import os
 from pathlib import Path
 
-class Settings(BaseSettings):
-    app_name: str = "FSE TeraBox Storage"
-    app_password: str = ""
-    session_secret: str = ""
-    fse_master_key: str = ""
-    database_url: str = "sqlite:///./data/fse.db"
-    terabox_client_id: str = ""
-    terabox_client_secret: str = ""
-    terabox_private_secret: str = ""
-    terabox_access_token: str = ""
-    terabox_refresh_token: str = ""
-    terabox_app_folder: str = "FSE-Storage"
-    chunk_size: int = 8 * 1024 * 1024
-    backup_interval_seconds: int = 600
-    max_upload_bytes: int = 40 * 1024 * 1024 * 1024
-    request_timeout: float = 120.0
-    model_config = SettingsConfigDict(env_file=".env", case_sensitive=False, extra="ignore")
+class Settings:
+    app_name = "TeraBox Storage Engine"
+    terabox_client_id = os.getenv("TERABOX_CLIENT_ID", "").strip()
+    terabox_client_secret = os.getenv("TERABOX_CLIENT_SECRET", "").strip()
+    terabox_private_secret = os.getenv("TERABOX_PRIVATE_SECRET", "").strip()
+    terabox_access_token = os.getenv("TERABOX_ACCESS_TOKEN", "").strip()
+    terabox_refresh_token = os.getenv("TERABOX_REFRESH_TOKEN", "").strip()
+    terabox_app_folder = "FSE-Storage"
+    chunk_size = 8 * 1024 * 1024
+    max_upload_bytes = 40 * 1024 * 1024 * 1024
+    request_timeout = 180.0
+    backup_interval_seconds = 600
+    database_path = os.getenv("FSE_DB", "data/fse.db")
 
 settings = Settings()
-Path("data").mkdir(exist_ok=True)
+Path(settings.database_path).parent.mkdir(parents=True, exist_ok=True)
+
+def require_credentials():
+    missing=[]
+    for k,v in [("TERABOX_CLIENT_ID",settings.terabox_client_id),("TERABOX_CLIENT_SECRET",settings.terabox_client_secret),("TERABOX_PRIVATE_SECRET",settings.terabox_private_secret)]:
+        if not v: missing.append(k)
+    if missing: raise RuntimeError("Missing TeraBox credentials: " + ", ".join(missing))
