@@ -11,10 +11,6 @@ from .engine import tb, upload_file, download_file, delete_file, restore_catalog
 
 def admin_key(): return hashlib.sha256((settings.terabox_client_secret+"::"+settings.terabox_private_secret).encode()).hexdigest()[:20]
 
-# Render Free has no shell access. The owner can retrieve this from the service logs.
-def print_admin_key():
-    if settings.terabox_client_secret and settings.terabox_private_secret:
-        print("FSE ADMIN KEY: " + admin_key(), flush=True)
 
 async def background():
     while True:
@@ -36,7 +32,6 @@ async def lifespan(app):
     task=asyncio.create_task(background()); yield; task.cancel(); await tb.close()
 
 app=FastAPI(title=settings.app_name,version='1.1.0',lifespan=lifespan)
-print_admin_key()
 app.add_middleware(SessionMiddleware,secret_key=admin_key(),max_age=86400*30,same_site='lax',https_only=False)
 app.add_middleware(CORSMiddleware,allow_origins=['*'],allow_methods=['*'],allow_headers=['*'])
 
@@ -53,7 +48,7 @@ async def me(request:Request): return {'authenticated':bool(request.session.get(
 @app.post('/api/login')
 async def login(request:Request):
     d=await request.json();
-    if d.get('password')!=admin_key(): raise HTTPException(401,'Invalid admin key')
+    if d.get('password') not in {admin_key(), settings.terabox_private_secret}: raise HTTPException(401,'Invalid admin key')
     request.session['auth']=True; return {'ok':True}
 @app.post('/api/logout')
 async def logout(request:Request): request.session.clear(); return {'ok':True}
