@@ -3,7 +3,3 @@ uvicorn[standard]==0.35.0
 httpx==0.28.1
 python-multipart==0.0.20
 cryptography==45.0.6
-pydantic-settings==2.10.1
-qrcode==8.2
-pillow==11.3.0
-psycopg[binary]==3.2.9
