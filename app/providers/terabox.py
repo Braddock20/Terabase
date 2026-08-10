@@ -1,5 +1,4 @@
-import asyncio, base64, hashlib, json, time, urllib.parse
-from pathlib import Path
+import hashlib, json, time, urllib.parse
 import httpx
 from ..config import settings
 
