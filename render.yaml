@@ -3,15 +3,12 @@ services:
     name: fse-terabox
     runtime: python
     buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    startCommand: exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-10000}
+    healthCheckPath: /health
     envVars:
       - key: TERABOX_CLIENT_ID
         sync: false
       - key: TERABOX_CLIENT_SECRET
         sync: false
       - key: TERABOX_PRIVATE_SECRET
-        sync: false
-      - key: TERABOX_ACCESS_TOKEN
-        sync: false
-      - key: TERABOX_REFRESH_TOKEN
         sync: false
