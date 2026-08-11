@@ -1,44 +1,168 @@
-# FSE — TeraBox-first Multi-Account Storage Engine
+# TeraBox Playwright — Render Free V1
 
-A Render-friendly storage manager built around the FSE architecture: logical files are encrypted, chunked, integrity-checked, and mapped to one or more independent TeraBox accounts. The core treats each TeraBox account as a provider instance, so accounts can be enabled, disabled, inspected, and removed without changing storage logic.
+This version is designed specifically for **Render Free**, where you do not have shell access.
 
-## Deploy on Render Free
+## What changed
 
-Build command:
+The previous version required `npm run login` locally and then copying browser state. That is inconvenient on Render Free.
 
-```bash
-pip install -r requirements.txt
-```
-
-Start command:
-
-```bash
-uvicorn app.main:app --host 0.0.0.0 --port $PORT
-```
-
-Environment variables for official TeraBox Open Platform authorization:
+This version performs the bootstrap automatically:
 
 ```text
-TERABOX_CLIENT_ID=
-TERABOX_CLIENT_SECRET=
-TERABOX_PRIVATE_SECRET=
+Render starts
+   ↓
+Playwright starts Chromium
+   ↓
+opens TeraBox
+   ↓
+uses TERABOX_EMAIL + TERABOX_PASSWORD
+   ↓
+normal TeraBox login
+   ↓
+session is retained in the running browser profile
+   ↓
+startup smoke test
+   ↓
+creates a tiny test file
+   ↓
+uploads it to TeraBox
+   ↓
+/health reports smoke result
 ```
 
-Optional direct token bootstrap:
+No Render shell is required.
+
+## Render environment variables
+
+Set:
 
 ```text
-TERABOX_ACCESS_TOKEN=
-TERABOX_REFRESH_TOKEN=
+API_KEY=<long random secret>
+TERABOX_EMAIL=<your TeraBox email>
+TERABOX_PASSWORD=<your TeraBox password>
 ```
 
-No Render Shell is required.
+Keep:
 
-## Multi-account model
+```text
+AUTO_LOGIN=1
+STARTUP_SMOKE=1
+HEADLESS=1
+```
 
-The dashboard has **TeraBox Accounts**. Each account has its own provider instance and isolated FSE namespace folder. Uploads can be automatically placed or pinned to an account. Download/delete operations use the account recorded in each chunk's manifest.
+Do not commit credentials.
 
-The engine does not bypass TeraBox authentication, quotas, anti-abuse controls, or undocumented private APIs. It expects legitimate authorization tokens or TeraBox's documented OAuth/device flow.
+## Endpoints
 
-## Persistence
+### Public
 
-Set `FSE_DB=/data/fse.db` and attach a Render persistent disk if you need the local catalog to survive restarts. The encrypted catalog is also backed up to every enabled TeraBox account.
+```http
+GET /
+GET /health
+```
+
+### Protected
+
+```http
+GET /smoke
+GET /session
+POST /upload
+```
+
+Authentication:
+
+```text
+x-api-key: YOUR_API_KEY
+```
+
+or:
+
+```text
+Authorization: Bearer YOUR_API_KEY
+```
+
+Upload:
+
+```bash
+curl -X POST   -H "x-api-key: YOUR_API_KEY"   -F "file=@photo.jpg"   -F "folder=/"   https://YOUR-SERVICE.onrender.com/upload
+```
+
+## Startup smoke test
+
+The application automatically creates:
+
+```text
+.terabox-smoke-<timestamp>.txt
+```
+
+and uploads it when authentication succeeds.
+
+The file is deleted locally afterward.
+
+Check:
+
+```text
+GET /health
+```
+
+A successful deployment should show:
+
+```json
+{
+  "ok": true,
+  "smoke": {
+    "ok": true,
+    "publicPage": true,
+    "authenticated": true,
+    "upload": {
+      "uploaded": true
+    }
+  }
+}
+```
+
+## Important limitation
+
+TeraBox currently offers several login methods and can require security verification. Its official login pages show email/password as well as other methods, and TeraBox documents login protection for new internet environments. If the account requires CAPTCHA, MFA, QR login, or another interactive verification, automatic headless login can stop at that step.
+
+This project does **not** bypass those protections.
+
+If your account requires interactive verification, the startup smoke test will report the failure in `/health` and Render logs.
+
+## Why no Render disk?
+
+Render Free does not provide the persistent-disk workflow needed for reliable browser-profile persistence. Therefore this V1 treats the browser session as disposable. On a restart/redeploy, it simply performs the login again using the environment credentials.
+
+That makes this version suitable for the exact first experiment: **can Playwright log into your TeraBox account from Render Free and upload a file?**
+
+## Testing
+
+Local:
+
+```bash
+npm install
+npm test
+npm run lint
+```
+
+The repository also uses the Playwright Docker image so the Chromium runtime is already included.
+
+A real TeraBox smoke test is executed by the deployed service itself because it requires your credentials and the live TeraBox environment.
+
+## Security
+
+- Use a strong API key.
+- Store TeraBox credentials only in Render environment variables.
+- Never put them in GitHub.
+- Never expose `/session` or `/smoke` without API authentication.
+- Do not share the Render service URL if you have disabled API authentication.
+- This automation is intended for your own TeraBox account.
+
+## Next step after V1
+
+Once the smoke test succeeds, we should stop relying on browser clicks for every operation.
+
+TeraBox has an official Open Platform with authorization and upload APIs. Their documentation describes access tokens, pre-create upload, chunk upload, and file operations. That is a much better foundation for a serious storage engine if we can obtain an application/client ID and secret. See the official documentation linked below.
+
+https://www.terabox.com/integrations/docs?lang=en
+
