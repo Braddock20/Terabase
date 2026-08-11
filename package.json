@@ -1,0 +1,20 @@
+{
+  "name":"terabox-playwright-render",
+  "version":"1.0.0",
+  "private":true,
+  "type":"module",
+  "engines":{"node":">=22"},
+  "scripts":{
+    "start":"node src/server.js",
+    "test":"node --test",
+    "lint":"node --check src/server.js && node --check src/terabox.js && node --check src/config.js && node --check src/smoke.js"
+  },
+  "dependencies":{
+    "express":"^5.1.0",
+    "multer":"^2.0.2",
+    "pino":"^9.7.0",
+    "pino-http":"^10.5.0",
+    "zod":"^4.0.0"
+  },
+  "devDependencies":{"@playwright/test":"^1.55.0"}
+}
