@@ -1,0 +1,8 @@
+Final validation:
+src/server.js: PASS
+src/terabox.js: PASS
+src/config.js: PASS
+src/smoke.js: PASS
+node --test: PASS
+
+The real TeraBox integration smoke test runs on Render at startup using the credentials you configure.
